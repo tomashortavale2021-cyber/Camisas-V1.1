@@ -33,17 +33,60 @@ function getAllShirts(week) {
 //
 
 const OUTGOING_POSITIONS = [
-  [4, 3], // Sex + Qui
-  [2, 1], // Qua + Ter
+  [3, 4], // Qui + Sex
+  [1, 2], // Ter + Qua
   [0, 4], // Seg + Sex
-  [3, 2], // Qui + Qua
-  [1, 0]  // Ter + Seg
+  [2, 3], // Qua + Qui
+  [0, 1]  // Seg + Ter
 ];
 
 
 // ============================================================
 // 3. CALCULAR AS 5 CAMISAS DE UMA SEMANA
 // ============================================================
+
+function circuitState(occurrence, all) {
+
+  // 5 camisas em uso
+  const current = all.slice(0, 5);
+
+  // 2 camisas de reserva
+  let reserves = all.slice(5, 7);
+
+  for (let i = 0; i < occurrence; i++) {
+
+    const positions =
+      OUTGOING_POSITIONS[i % OUTGOING_POSITIONS.length];
+
+    // As duas camisas que vão sair
+    const outgoing = [
+      current[positions[0]],
+      current[positions[1]]
+    ];
+
+    // As reservas entram exatamente nos lugares
+    // das camisas que saíram
+    current[positions[0]] = reserves[0];
+    current[positions[1]] = reserves[1];
+
+    // As que saíram passam a ser as reservas
+    reserves = outgoing;
+  }
+
+  return {
+    current,
+    reserves
+  };
+}
+
+
+function getOccurrence(week) {
+
+  return week % 2 === 1
+    ? Math.floor((week - 1) / 2)
+    : Math.floor((week - 2) / 2);
+}
+
 
 function shirtsForWeek(week) {
 
@@ -52,40 +95,9 @@ function shirtsForWeek(week) {
   }
 
   const all = getAllShirts(week);
+  const occurrence = getOccurrence(week);
 
-  // Cada circuito aparece de 2 em 2 semanas.
-  const occurrence = week % 2 === 1
-    ? Math.floor((week - 1) / 2)
-    : Math.floor((week - 2) / 2);
-
-  // Estado inicial:
-  // Letras:  A B C D E + reservas F G
-  // Números: 1 2 3 4 5 + reservas 6 7
-  const current = all.slice(0, 5);
-  let reserves = all.slice(5, 7);
-
-  // Aplicar todas as trocas anteriores.
-  for (let i = 0; i < occurrence; i++) {
-
-    const positions =
-      OUTGOING_POSITIONS[i % OUTGOING_POSITIONS.length];
-
-    // Guardar as 2 camisas que vão sair.
-    const outgoing = [
-      current[positions[0]],
-      current[positions[1]]
-    ];
-
-    // As 2 reservas entram exatamente nos lugares
-    // das 2 camisas que saíram.
-    current[positions[0]] = reserves[0];
-    current[positions[1]] = reserves[1];
-
-    // As que saíram passam a ser as novas reservas.
-    reserves = outgoing;
-  }
-
-  return current;
+  return circuitState(occurrence, all).current;
 }
 
 
@@ -330,7 +342,7 @@ function render() {
     getOutgoingShirts(state.week);
 
   outgoingEl.textContent =
-  [...outgoing].sort().join(" + ");
+  outgoing.join(" + ");
 
   // ----------------------------------------------------------
   // CAMISAS QUE VÃO ENTRAR
@@ -348,7 +360,7 @@ function render() {
 
 
     incomingEl.textContent =
-  [...incoming].sort().join(" + ");
+  incoming.join(" + ");
   }
 }
 
