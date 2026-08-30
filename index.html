@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <meta name="description" content="Rotação manual das camisas por semanas">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css">
+  <title>Camisas</title>
+</head>
+<body>
+  <main class="app">
+    <section class="card" aria-live="polite">
+      <div class="top-row">
+        <div>
+          <p class="eyebrow">ROTAÇÃO DE CAMISAS</p>
+          <h1 id="weekTitle">Semana —</h1>
+          <p id="dateRange" class="date-range">Sem data definida</p>
+        </div>
+        <div id="circuitBadge" class="badge">—</div>
+      </div>
+
+      <div class="shirts" id="shirts"></div>
+
+      <div class="details">
+        <div class="detail">
+          <span>Camisa que saiu</span>
+          <strong id="outgoing">—</strong>
+        </div>
+        <div class="detail">
+          <span>Camisa que entrou</span>
+          <strong id="incoming">—</strong>
+        </div>
+      </div>
+
+      <div class="nav">
+        <button id="prevBtn" class="secondary">← Anterior</button>
+        <button id="nextBtn">Próxima →</button>
+      </div>
+
+      <button id="settingsBtn" class="ghost">Definições / alterar semana</button>
+      <p id="savedNote" class="saved-note">A aplicação nunca avança sozinha.</p>
+    </section>
+  </main>
+
+  <dialog id="setupDialog">
+    <form id="setupForm" method="dialog">
+      <h2>Configurar semana</h2>
+      <p class="muted">Escolhe manualmente em que semana do teu ciclo estás. A data é apenas informativa.</p>
+      <label>
+        Semana
+        <input id="setupWeek" type="number" min="1" step="1" required inputmode="numeric">
+      </label>
+      <label>
+        Data de início (segunda-feira)
+        <input id="setupDate" type="date">
+      </label>
+      <div class="dialog-actions">
+        <button type="button" id="setupCancel" class="secondary">Cancelar</button>
+        <button type="submit">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="advanceDialog">
+    <form id="advanceForm" method="dialog">
+      <h2>Avançar uma semana</h2>
+      <p id="advanceText" class="muted"></p>
+      <label>
+        Data de início da nova semana
+        <input id="advanceDate" type="date">
+      </label>
+      <div class="dialog-actions">
+        <button type="button" id="advanceCancel" class="secondary">Cancelar</button>
+        <button type="submit">Avançar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
