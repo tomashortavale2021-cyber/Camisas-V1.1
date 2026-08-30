@@ -223,16 +223,16 @@ function render() {
   // O QUE SAI NO FINAL DESTA SEMANA
   // ----------------------------------------------------------
 
-  outgoingEl.textContent =
-    getOutgoingShirt(state.week);
+  outgoingEl.textContent = getOutgoingShirt(state.week);
 
-
-  // ----------------------------------------------------------
-  // O QUE ENTRA NA SEMANA SEGUINTE
-  // ----------------------------------------------------------
-
-  incomingEl.textContent =
-    getIncomingShirt(state.week);
+// A primeira semana é atípica:
+// a semana 2 já tem as 5 camisas numéricas normais,
+// portanto não é necessário trazer nenhuma camisa.
+if (state.week === 1) {
+  incomingEl.textContent = "—";
+} else {
+  incomingEl.textContent = getIncomingShirt(state.week);
+  }
 }
 
 
