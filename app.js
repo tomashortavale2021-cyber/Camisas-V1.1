@@ -129,47 +129,20 @@ function getOutgoingShirts(week) {
 
 function getIncomingShirts(week) {
 
-  // A primeira semana é atípica.
-  // A semana 2 começa com 1 2 3 4 5,
-  // portanto não há camisas para trazer.
+  // A primeira semana é atípica:
+  // a semana 2 já começa com 1 2 3 4 5.
   if (week === 1) {
     return ["—", "—"];
   }
 
-  const nextWeek = week + 1;
+  // As camisas que vão entrar na próxima semana
+  // são as 2 camisas que estão de reserva ESTA semana.
+  const all = getAllShirts(week);
+  const occurrence = getOccurrence(week);
 
-  // O circuito da próxima semana é o outro circuito.
-  //
-  // Precisamos descobrir quais 2 camisas desse circuito
-  // estão fora na próxima ocorrência.
-  const nextOccurrence = nextWeek % 2 === 1
-    ? Math.floor((nextWeek - 1) / 2)
-    : Math.floor((nextWeek - 2) / 2);
+  const state = circuitState(occurrence, all);
 
-  const allNext = getAllShirts(nextWeek);
-
-  const positions =
-    OUTGOING_POSITIONS[
-      nextOccurrence % OUTGOING_POSITIONS.length
-    ];
-
-  const nextCurrent = shirtsForWeek(nextWeek);
-
-  // As 2 reservas da próxima semana são as camisas
-  // que não aparecem nas 5 posições em uso.
-  //
-  // É precisamente aquilo que tens de trazer de casa.
-  const reserves = allNext.filter(
-    shirt => !nextCurrent.includes(shirt)
-  );
-
-  // Na primeira ocorrência do circuito, as reservas são
-  // simplesmente as duas últimas camisas.
-  if (reserves.length === 2) {
-    return reserves;
-  }
-
-  return ["—", "—"];
+  return state.reserves;
 }
 
 
