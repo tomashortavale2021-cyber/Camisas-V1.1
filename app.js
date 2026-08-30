@@ -76,17 +76,31 @@ function getOutgoingShirt(week) {
 
 function getIncomingShirt(week) {
 
+  // A primeira semana é atípica:
+  // a semana 2 já tem as 5 camisas numéricas normais.
+  if (week === 1) {
+    return "_";
+  }
+
+  // A semana seguinte usa o outro circuito.
   const nextWeek = week + 1;
 
-  // Na semana seguinte muda de circuito:
-  // letras → números
-  // números → letras
-  const allNext = getAllShirts(nextWeek);
-  const shirtsNextWeek = shirtsForWeek(nextWeek);
+  // Para descobrir qual camisa desse circuito deve entrar,
+  // comparamos a próxima ocorrência desse circuito com
+  // a ocorrência anterior.
+  //
+  // Exemplo:
+  // Semana 1: A B C D E
+  // Semana 3: A B C D F
+  //
+  // A camisa nova é F.
+  const previousSameCircuitWeek = week - 1;
+  const nextSameCircuitWeek = week + 1;
 
-  // Das 6 camisas desse circuito, uma fica em casa.
-  // É essa que tens de trazer para a próxima semana.
-  return allNext.find(shirt => !shirtsNextWeek.includes(shirt)) ?? "—";
+  const previous = shirtsForWeek(previousSameCircuitWeek);
+  const next = shirtsForWeek(nextSameCircuitWeek);
+
+  return next.find(shirt => !previous.includes(shirt)) ?? "_";
 }
 
 
