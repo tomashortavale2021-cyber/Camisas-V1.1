@@ -100,9 +100,16 @@ function render() {
     </div>
   `).join("");
 
-  const info = transitionInfo(state.week);
-  $("outgoing").textContent = info.outgoing;
-  $("incoming").textContent = info.incoming;
+  const previousSameCircuitWeek = state.week - 2;
+
+  if (previousSameCircuitWeek >= 1) {
+  const info = transitionInfo(previousSameCircuitWeek, state.week);
+  outgoingEl.textContent = info.outgoing;
+  incomingEl.textContent = info.incoming;
+} else {
+  outgoingEl.textContent = "—";
+  incomingEl.textContent = "—";
+}
 }
 
 const setupDialog = $("setupDialog");
