@@ -1,4 +1,4 @@
-const STORAGE_KEY = "camisas_estado_v2";
+const STORAGE_KEY = "camisas_estado_v3";
 const DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex"];
 
 // ============================================================
@@ -7,16 +7,46 @@ const DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex"];
 
 function getAllShirts(week) {
   return week % 2 === 1
-    ? ["A", "B", "C", "D", "E", "F"]
-    : ["1", "2", "3", "4", "5", "6"];
+    ? ["A", "B", "C", "D", "E", "F", "G"]
+    : ["1", "2", "3", "4", "5", "6", "7"];
 }
 
 
 // ============================================================
-// 2. CALCULAR AS 5 CAMISAS DE UMA SEMANA
+// 2. POSIÇÕES QUE SAEM EM CADA OCORRÊNCIA DO CIRCUITO
+// ============================================================
+//
+// Índices:
+// 0 = Segunda
+// 1 = Terça
+// 2 = Quarta
+// 3 = Quinta
+// 4 = Sexta
+//
+// Ordem:
+// 1.º: Sexta + Quinta
+// 2.º: Quarta + Terça
+// 3.º: Segunda + Sexta
+// 4.º: Quinta + Quarta
+// 5.º: Terça + Segunda
+// Depois repete.
+//
+
+const OUTGOING_POSITIONS = [
+  [4, 3], // Sex + Qui
+  [2, 1], // Qua + Ter
+  [0, 4], // Seg + Sex
+  [3, 2], // Qui + Qua
+  [1, 0]  // Ter + Seg
+];
+
+
+// ============================================================
+// 3. CALCULAR AS 5 CAMISAS DE UMA SEMANA
 // ============================================================
 
 function shirtsForWeek(week) {
+
   if (!Number.isInteger(week) || week < 1) {
     throw new Error("Semana inválida.");
   }
@@ -28,24 +58,31 @@ function shirtsForWeek(week) {
     ? Math.floor((week - 1) / 2)
     : Math.floor((week - 2) / 2);
 
-  // Cada circuito tem 26 estados antes de repetir.
-  const step = occurrence % 26;
-
   // Estado inicial:
-  // ABCDE + F em reserva
-  // ou
-  // 12345 + 6 em reserva
+  // Letras:  A B C D E + reservas F G
+  // Números: 1 2 3 4 5 + reservas 6 7
   const current = all.slice(0, 5);
-  let reserve = all[5];
+  let reserves = all.slice(5, 7);
 
-  // A camisa que muda de posição percorre:
-  // Sex → Qui → Qua → Ter → Seg → Sex → ...
-  for (let i = 0; i < step; i++) {
-    const position = 4 - (i % 5);
+  // Aplicar todas as trocas anteriores.
+  for (let i = 0; i < occurrence; i++) {
 
-    const old = current[position];
-    current[position] = reserve;
-    reserve = old;
+    const positions =
+      OUTGOING_POSITIONS[i % OUTGOING_POSITIONS.length];
+
+    // Guardar as 2 camisas que vão sair.
+    const outgoing = [
+      current[positions[0]],
+      current[positions[1]]
+    ];
+
+    // As 2 reservas entram exatamente nos lugares
+    // das 2 camisas que saíram.
+    current[positions[0]] = reserves[0];
+    current[positions[1]] = reserves[1];
+
+    // As que saíram passam a ser as novas reservas.
+    reserves = outgoing;
   }
 
   return current;
@@ -53,71 +90,110 @@ function shirtsForWeek(week) {
 
 
 // ============================================================
-// 3. DESCOBRIR QUAL CAMISA SAI NO FIM DA SEMANA
+// 4. CALCULAR AS CAMISAS QUE SAEM NO FIM DA SEMANA
 // ============================================================
 
-function getOutgoingShirt(week) {
+function getOutgoingShirts(week) {
 
-  // A semana seguinte usa o mesmo circuito apenas
-  // duas semanas depois.
-  const nextSameCircuitWeek = week + 2;
+  const occurrence = week % 2 === 1
+    ? Math.floor((week - 1) / 2)
+    : Math.floor((week - 2) / 2);
+
+  const positions =
+    OUTGOING_POSITIONS[occurrence % OUTGOING_POSITIONS.length];
 
   const current = shirtsForWeek(week);
-  const nextSameCircuit = shirtsForWeek(nextSameCircuitWeek);
 
-  // A camisa que desaparece da lista é a que vai para casa.
-  return current.find(shirt => !nextSameCircuit.includes(shirt)) ?? "—";
+  return [
+    current[positions[0]],
+    current[positions[1]]
+  ];
 }
 
 
 // ============================================================
-// 4. DESCOBRIR QUAL CAMISA ENTRA NA SEMANA SEGUINTE
+// 5. CALCULAR AS CAMISAS QUE ENTRAM NA SEMANA SEGUINTE
 // ============================================================
 
-function getIncomingShirt(week) {
+function getIncomingShirts(week) {
 
-  // Na primeira semana não há camisa para trazer,
-  // porque a semana 2 já começa com 1 2 3 4 5.
+  // A primeira semana é atípica.
+  // A semana 2 começa com 1 2 3 4 5,
+  // portanto não há camisas para trazer.
   if (week === 1) {
-    return "—";
+    return ["—", "—"];
   }
 
-  // A semana seguinte pertence ao outro circuito.
   const nextWeek = week + 1;
 
-  // A semana anterior pertence ao mesmo circuito da próxima semana.
-  const previousSameCircuitWeek = week - 1;
+  // O circuito da próxima semana é o outro circuito.
+  //
+  // Precisamos descobrir quais 2 camisas desse circuito
+  // estão fora na próxima ocorrência.
+  const nextOccurrence = nextWeek % 2 === 1
+    ? Math.floor((nextWeek - 1) / 2)
+    : Math.floor((nextWeek - 2) / 2);
 
-  const previous = shirtsForWeek(previousSameCircuitWeek);
-  const next = shirtsForWeek(nextWeek);
+  const allNext = getAllShirts(nextWeek);
 
-  // A camisa que aparece na próxima semana e não estava
-  // na ocorrência anterior desse circuito é a que tens
-  // de trazer de casa.
-  return next.find(shirt => !previous.includes(shirt)) ?? "—";
+  const positions =
+    OUTGOING_POSITIONS[
+      nextOccurrence % OUTGOING_POSITIONS.length
+    ];
+
+  const nextCurrent = shirtsForWeek(nextWeek);
+
+  // As 2 reservas da próxima semana são as camisas
+  // que não aparecem nas 5 posições em uso.
+  //
+  // É precisamente aquilo que tens de trazer de casa.
+  const reserves = allNext.filter(
+    shirt => !nextCurrent.includes(shirt)
+  );
+
+  // Na primeira ocorrência do circuito, as reservas são
+  // simplesmente as duas últimas camisas.
+  if (reserves.length === 2) {
+    return reserves;
+  }
+
+  return ["—", "—"];
 }
 
 
 // ============================================================
-// 5. MEMÓRIA
+// 6. MEMÓRIA
 // ============================================================
 
 function loadState() {
+
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
+
+    const raw =
+      localStorage.getItem(STORAGE_KEY);
+
+    return raw
+      ? JSON.parse(raw)
+      : null;
+
   } catch {
+
     return null;
   }
 }
 
+
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(state)
+  );
 }
 
 
 // ============================================================
-// 6. DATAS
+// 7. DATAS
 // ============================================================
 
 function formatDateRange(iso) {
@@ -126,16 +202,22 @@ function formatDateRange(iso) {
     return "Sem data definida";
   }
 
-  const start = new Date(`${iso}T12:00:00`);
-  const end = new Date(start);
+  const start =
+    new Date(`${iso}T12:00:00`);
 
-  end.setDate(end.getDate() + 4);
+  const end =
+    new Date(start);
 
-  const fmt = new Intl.DateTimeFormat("pt-PT", {
-    day: "numeric",
-    month: "short",
-    year: "numeric"
-  });
+  end.setDate(
+    end.getDate() + 4
+  );
+
+  const fmt =
+    new Intl.DateTimeFormat("pt-PT", {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    });
 
   return `${fmt.format(start)} — ${fmt.format(end)}`;
 }
@@ -147,109 +229,139 @@ function addDays(iso, days) {
     return "";
   }
 
-  const d = new Date(`${iso}T12:00:00`);
+  const d =
+    new Date(`${iso}T12:00:00`);
 
-  d.setDate(d.getDate() + days);
+  d.setDate(
+    d.getDate() + days
+  );
 
   return d.toISOString().slice(0, 10);
 }
 
 
 // ============================================================
-// 7. ESTADO ATUAL
+// 8. ESTADO ATUAL
 // ============================================================
 
 let state = loadState();
 
-const $ = id => document.getElementById(id);
+const $ = id =>
+  document.getElementById(id);
 
-const outgoingEl = $("outgoing");
-const incomingEl = $("incoming");
+const outgoingEl =
+  $("outgoing");
+
+const incomingEl =
+  $("incoming");
 
 
 // ============================================================
-// 8. MOSTRAR A SEMANA
+// 9. MOSTRAR A SEMANA
 // ============================================================
 
 function render() {
 
-  // Ainda não configurado
   if (!state) {
 
-    $("weekTitle").textContent = "Configurar";
+    $("weekTitle").textContent =
+      "Configurar";
 
     $("dateRange").textContent =
       "Escolhe a semana atual para começar.";
 
-    $("shirts").innerHTML = "";
+    $("shirts").innerHTML =
+      "";
 
-    outgoingEl.textContent = "—";
-    incomingEl.textContent = "—";
+    outgoingEl.textContent =
+      "—";
+
+    incomingEl.textContent =
+      "—";
 
     if ($("circuitBadge")) {
-      $("circuitBadge").textContent = "—";
+      $("circuitBadge").textContent =
+        "—";
     }
 
     return;
   }
 
 
-  // Camisas desta semana
-  const shirts = shirtsForWeek(state.week);
+  // ----------------------------------------------------------
+  // CAMISAS DA SEMANA
+  // ----------------------------------------------------------
+
+  const shirts =
+    shirtsForWeek(state.week);
 
 
-  // Título
   $("weekTitle").textContent =
     `Semana ${state.week}`;
 
 
-  // Datas
   $("dateRange").textContent =
     formatDateRange(state.date);
 
 
-  // Circuito
   if ($("circuitBadge")) {
 
     $("circuitBadge").textContent =
       state.week % 2 === 1
-        ? "Circuito A–F"
-        : "Circuito 1–6";
+        ? "Circuito A–G"
+        : "Circuito 1–7";
   }
 
 
-  // Camisas
-  $("shirts").innerHTML = shirts.map((shirt, i) => `
-    <div class="shirt">
-      <div class="value">${shirt}</div>
-      <div class="day">${DAYS[i]}</div>
-    </div>
-  `).join("");
+  $("shirts").innerHTML =
+    shirts.map((shirt, i) => `
+      <div class="shirt">
+        <div class="value">${shirt}</div>
+        <div class="day">${DAYS[i]}</div>
+      </div>
+    `).join("");
 
 
   // ----------------------------------------------------------
-  // O QUE SAI NO FINAL DESTA SEMANA
+  // CAMISAS QUE VÃO SAIR
   // ----------------------------------------------------------
 
-  outgoingEl.textContent = getOutgoingShirt(state.week);
+  const outgoing =
+    getOutgoingShirts(state.week);
 
-// A primeira semana é atípica:
-// a semana 2 já tem as 5 camisas numéricas normais,
-// portanto não é necessário trazer nenhuma camisa.
-if (state.week === 1) {
-  incomingEl.textContent = "—";
-} else {
-  incomingEl.textContent = getIncomingShirt(state.week);
+  outgoingEl.textContent =
+  [...outgoing].sort().join(" + ");
+
+  // ----------------------------------------------------------
+  // CAMISAS QUE VÃO ENTRAR
+  // ----------------------------------------------------------
+
+  const incoming =
+    getIncomingShirts(state.week);
+
+  if (state.week === 1) {
+
+    incomingEl.textContent =
+      "—";
+
+  } else {
+
+
+    incomingEl.textContent =
+  [...incoming].sort().join(" + ");
   }
 }
 
 
 // ============================================================
-// 9. CONFIGURAÇÃO
+// 10. CONFIGURAÇÃO
 // ============================================================
 
-const setupDialog = $("setupDialog");
-const advanceDialog = $("advanceDialog");
+const setupDialog =
+  $("setupDialog");
+
+const advanceDialog =
+  $("advanceDialog");
 
 
 function openSetup() {
@@ -264,136 +376,180 @@ function openSetup() {
 }
 
 
-$("settingsBtn").addEventListener("click", openSetup);
+$("settingsBtn")
+  .addEventListener(
+    "click",
+    openSetup
+  );
 
 
-// Cancelar configuração
-$("setupCancel").addEventListener("click", () => {
-  setupDialog.close();
-});
+$("setupCancel")
+  .addEventListener(
+    "click",
+    () => {
+      setupDialog.close();
+    }
+  );
 
 
-// Cancelar avanço
-$("advanceCancel").addEventListener("click", () => {
-  advanceDialog.close();
-});
+$("advanceCancel")
+  .addEventListener(
+    "click",
+    () => {
+      advanceDialog.close();
+    }
+  );
 
 
-// Guardar configuração
-$("setupForm").addEventListener("submit", e => {
+// ============================================================
+// 11. GUARDAR CONFIGURAÇÃO
+// ============================================================
 
-  e.preventDefault();
+$("setupForm")
+  .addEventListener(
+    "submit",
+    e => {
 
-  const week =
-    Number($("setupWeek").value);
+      e.preventDefault();
 
-  if (!Number.isInteger(week) || week < 1) {
-    return;
+      const week =
+        Number(
+          $("setupWeek").value
+        );
+
+      if (
+        !Number.isInteger(week) ||
+        week < 1
+      ) {
+        return;
+      }
+
+      state = {
+        week,
+        date:
+          $("setupDate").value || ""
+      };
+
+      saveState();
+
+      setupDialog.close();
+
+      render();
+    }
+  );
+
+
+// ============================================================
+// 12. PRÓXIMA SEMANA
+// ============================================================
+
+$("nextBtn")
+  .addEventListener(
+    "click",
+    () => {
+
+      if (!state) {
+
+        openSetup();
+
+        return;
+      }
+
+      const next =
+        state.week + 1;
+
+      $("advanceText").textContent =
+        `Passar da semana ${state.week} para a semana ${next}. A aplicação só avança se confirmares.`;
+
+      $("advanceDate").value =
+        addDays(
+          state.date,
+          7
+        );
+
+      advanceDialog.showModal();
+    }
+  );
+
+
+// ============================================================
+// 13. CONFIRMAR PRÓXIMA SEMANA
+// ============================================================
+
+$("advanceForm")
+  .addEventListener(
+    "submit",
+    e => {
+
+      e.preventDefault();
+
+      state = {
+
+        week:
+          state.week + 1,
+
+        date:
+          $("advanceDate").value || ""
+      };
+
+      saveState();
+
+      advanceDialog.close();
+
+      render();
+    }
+  );
+
+
+// ============================================================
+// 14. SEMANA ANTERIOR
+// ============================================================
+
+$("prevBtn")
+  .addEventListener(
+    "click",
+    () => {
+
+      if (
+        !state ||
+        state.week <= 1
+      ) {
+        return;
+      }
+
+      state = {
+
+        week:
+          state.week - 1,
+
+        date:
+          addDays(
+            state.date,
+            -7
+          )
+      };
+
+      saveState();
+
+      render();
+    }
+  );
+
+
+// ============================================================
+// 15. INSTALAÇÃO COMO APP
+// ============================================================
+
+window.addEventListener(
+  "beforeinstallprompt",
+  e => {
+
+    e.preventDefault();
+
+    window.deferredInstallPrompt =
+      e;
   }
-
-  state = {
-    week,
-    date: $("setupDate").value || ""
-  };
-
-  saveState();
-
-  setupDialog.close();
-
-  render();
-});
-
-
-// ============================================================
-// 10. PRÓXIMA SEMANA
-// ============================================================
-
-$("nextBtn").addEventListener("click", () => {
-
-  if (!state) {
-
-    openSetup();
-
-    return;
-  }
-
-
-  const next =
-    state.week + 1;
-
-
-  $("advanceText").textContent =
-    `Passar da semana ${state.week} para a semana ${next}. A aplicação só avança se confirmares.`;
-
-
-  // Por defeito, a data avança 7 dias.
-  // Mas continuas a poder alterá-la manualmente.
-  $("advanceDate").value =
-    addDays(state.date, 7);
-
-
-  advanceDialog.showModal();
-});
-
-
-// Confirmar próxima semana
-$("advanceForm").addEventListener("submit", e => {
-
-  e.preventDefault();
-
-  state = {
-
-    week: state.week + 1,
-
-    date:
-      $("advanceDate").value || ""
-  };
-
-  saveState();
-
-  advanceDialog.close();
-
-  render();
-});
-
-
-// ============================================================
-// 11. SEMANA ANTERIOR
-// ============================================================
-
-$("prevBtn").addEventListener("click", () => {
-
-  if (!state || state.week <= 1) {
-    return;
-  }
-
-
-  state = {
-
-    week:
-      state.week - 1,
-
-    date:
-      addDays(state.date, -7)
-  };
-
-
-  saveState();
-
-  render();
-});
-
-
-// ============================================================
-// 12. INSTALAÇÃO COMO APP
-// ============================================================
-
-window.addEventListener("beforeinstallprompt", e => {
-
-  e.preventDefault();
-
-  window.deferredInstallPrompt = e;
-});
+);
 
 
 // ============================================================
