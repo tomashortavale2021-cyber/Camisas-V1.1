@@ -23,34 +23,57 @@ function getAllShirts(week) {
 // 3 = Quinta
 // 4 = Sexta
 //
-// Ordem:
-// 1.º: Sexta + Quinta
-// 2.º: Quarta + Terça
-// 3.º: Segunda + Sexta
-// 4.º: Quinta + Quarta
-// 5.º: Terça + Segunda
+// Ordem das duplas que vão lavar:
+// 1. Quinta + Sexta
+// 2. Terça + Quarta
+// 3. Segunda + Sexta
+// 4. Quarta + Quinta
+// 5. Segunda + Terça
+//
 // Depois repete.
 //
 
 const OUTGOING_POSITIONS = [
   [3, 4], // Qui + Sex
   [1, 2], // Ter + Qua
-  [4, 0], // Sex + Seg
+  [0, 4], // Seg + Sex
   [2, 3], // Qua + Qui
   [0, 1]  // Seg + Ter
 ];
 
 
 // ============================================================
-// 3. CALCULAR AS 5 CAMISAS DE UMA SEMANA
+// 3. OCORRÊNCIA DO CIRCUITO
 // ============================================================
+
+function getOccurrence(week) {
+  if (!Number.isInteger(week) || week < 1) {
+    throw new Error("Semana inválida.");
+  }
+
+  return week % 2 === 1
+    ? Math.floor((week - 1) / 2)
+    : Math.floor((week - 2) / 2);
+}
+
+
+// ============================================================
+// 4. CALCULAR O ESTADO COMPLETO DE UM CIRCUITO
+// ============================================================
+//
+// Cada circuito tem 7 camisas:
+// - 5 em uso
+// - 2 de reserva
+//
+// Em cada ocorrência:
+// - saem 2 camisas
+// - entram as 2 reservas
+// - as 2 que saíram tornam-se as novas reservas
+//
 
 function circuitState(occurrence, all) {
 
-  // 5 camisas em uso
   const current = all.slice(0, 5);
-
-  // 2 camisas de reserva
   let reserves = all.slice(5, 7);
 
   for (let i = 0; i < occurrence; i++) {
@@ -58,18 +81,17 @@ function circuitState(occurrence, all) {
     const positions =
       OUTGOING_POSITIONS[i % OUTGOING_POSITIONS.length];
 
-    // As duas camisas que vão sair
+    // Guardar as duas que vão sair
     const outgoing = [
       current[positions[0]],
       current[positions[1]]
     ];
 
-    // As reservas entram exatamente nos lugares
-    // das camisas que saíram
+    // As duas reservas entram nos lugares das que saíram
     current[positions[0]] = reserves[0];
     current[positions[1]] = reserves[1];
 
-    // As que saíram passam a ser as reservas
+    // As que saíram passam a ser as novas reservas
     reserves = outgoing;
   }
 
@@ -80,19 +102,11 @@ function circuitState(occurrence, all) {
 }
 
 
-function getOccurrence(week) {
-
-  return week % 2 === 1
-    ? Math.floor((week - 1) / 2)
-    : Math.floor((week - 2) / 2);
-}
-
+// ============================================================
+// 5. CAMISAS DA SEMANA
+// ============================================================
 
 function shirtsForWeek(week) {
-
-  if (!Number.isInteger(week) || week < 1) {
-    throw new Error("Semana inválida.");
-  }
 
   const all = getAllShirts(week);
   const occurrence = getOccurrence(week);
@@ -102,52 +116,84 @@ function shirtsForWeek(week) {
 
 
 // ============================================================
-// 4. CALCULAR AS CAMISAS QUE SAEM NO FIM DA SEMANA
+// 6. CAMISAS QUE VÃO SAIR NO FIM DA SEMANA
 // ============================================================
 
 function getOutgoingShirts(week) {
 
-  const occurrence = week % 2 === 1
-    ? Math.floor((week - 1) / 2)
-    : Math.floor((week - 2) / 2);
-
-  const positions =
-    OUTGOING_POSITIONS[occurrence % OUTGOING_POSITIONS.length];
-
-  const current = shirtsForWeek(week);
-
-  return [
-    current[positions[0]],
-    current[positions[1]]
-  ];
-}
-
-
-// ============================================================
-// 5. CALCULAR AS CAMISAS QUE ENTRAM NA SEMANA SEGUINTE
-// ============================================================
-
-function getIncomingShirts(week) {
-
-  // A primeira semana é atípica:
-  // a semana 2 já começa com 1 2 3 4 5.
-  if (week === 1) {
-    return ["—", "—"];
-  }
-
-  // As camisas que vão entrar na próxima semana
-  // são as 2 camisas que estão de reserva ESTA semana.
   const all = getAllShirts(week);
   const occurrence = getOccurrence(week);
 
   const state = circuitState(occurrence, all);
 
-  return state.reserves;
+  const positions =
+    OUTGOING_POSITIONS[
+      occurrence % OUTGOING_POSITIONS.length
+    ];
+
+  return [
+    state.current[positions[0]],
+    state.current[positions[1]]
+  ];
 }
 
 
 // ============================================================
-// 6. MEMÓRIA
+// 7. CAMISAS QUE VÃO ENTRAR NA SEMANA SEGUINTE
+// ============================================================
+//
+// A semana seguinte pertence ao outro circuito.
+//
+// Portanto:
+// - semana 1 → procura as reservas do circuito numérico
+// - semana 2 → procura as reservas do circuito das letras
+// - etc.
+//
+// A exceção é a semana 1, porque é a semana inicial:
+// a semana 2 já começa com 1 2 3 4 5.
+// Não precisas de trazer nada para ela.
+//
+
+function getIncomingShirts(week) {
+
+  // A semana 1 é atípica:
+  // a semana 2 já começa com as 5 camisas numéricas,
+  // por isso não é necessário trazer nenhuma camisa.
+  if (week === 1) {
+    return ["—", "—"];
+  }
+
+  // A próxima semana pertence ao outro circuito.
+  const nextWeek = week + 1;
+
+  // Para saber quais camisas vão entrar na próxima semana,
+  // temos de olhar para o estado ANTERIOR desse circuito.
+  //
+  // Exemplo:
+  // Semana 1 → A B C D E + reservas F G
+  // Semana 3 → A F G D E
+  //
+  // Logo, no fim da semana 2, as camisas que tens de trazer
+  // são F + G.
+  const previousSameCircuitWeek = nextWeek - 2;
+
+  const all =
+    getAllShirts(previousSameCircuitWeek);
+
+  const occurrence =
+    getOccurrence(previousSameCircuitWeek);
+
+  const previousState =
+    circuitState(occurrence, all);
+
+  // As reservas dessa ocorrência são precisamente
+  // as 2 camisas que vão entrar na próxima ocorrência.
+  return [...previousState.reserves].sort();
+}
+
+
+// ============================================================
+// 8. MEMÓRIA
 // ============================================================
 
 function loadState() {
@@ -178,7 +224,7 @@ function saveState() {
 
 
 // ============================================================
-// 7. DATAS
+// 9. DATAS
 // ============================================================
 
 function formatDateRange(iso) {
@@ -226,7 +272,7 @@ function addDays(iso, days) {
 
 
 // ============================================================
-// 8. ESTADO ATUAL
+// 10. ESTADO ATUAL
 // ============================================================
 
 let state = loadState();
@@ -242,7 +288,7 @@ const incomingEl =
 
 
 // ============================================================
-// 9. MOSTRAR A SEMANA
+// 11. MOSTRAR A SEMANA
 // ============================================================
 
 function render() {
@@ -315,7 +361,8 @@ function render() {
     getOutgoingShirts(state.week);
 
   outgoingEl.textContent =
-  outgoing.join(" + ");
+    outgoing.join(" + ");
+
 
   // ----------------------------------------------------------
   // CAMISAS QUE VÃO ENTRAR
@@ -331,15 +378,14 @@ function render() {
 
   } else {
 
-
     incomingEl.textContent =
-  incoming.join(" + ");
+      incoming.join(" + ");
   }
 }
 
 
 // ============================================================
-// 10. CONFIGURAÇÃO
+// 12. CONFIGURAÇÃO
 // ============================================================
 
 const setupDialog =
@@ -387,7 +433,7 @@ $("advanceCancel")
 
 
 // ============================================================
-// 11. GUARDAR CONFIGURAÇÃO
+// 13. GUARDAR CONFIGURAÇÃO
 // ============================================================
 
 $("setupForm")
@@ -425,7 +471,7 @@ $("setupForm")
 
 
 // ============================================================
-// 12. PRÓXIMA SEMANA
+// 14. PRÓXIMA SEMANA
 // ============================================================
 
 $("nextBtn")
@@ -458,7 +504,7 @@ $("nextBtn")
 
 
 // ============================================================
-// 13. CONFIRMAR PRÓXIMA SEMANA
+// 15. CONFIRMAR PRÓXIMA SEMANA
 // ============================================================
 
 $("advanceForm")
@@ -487,7 +533,7 @@ $("advanceForm")
 
 
 // ============================================================
-// 14. SEMANA ANTERIOR
+// 16. SEMANA ANTERIOR
 // ============================================================
 
 $("prevBtn")
@@ -522,7 +568,7 @@ $("prevBtn")
 
 
 // ============================================================
-// 15. INSTALAÇÃO COMO APP
+// 17. INSTALAÇÃO COMO APP
 // ============================================================
 
 window.addEventListener(
