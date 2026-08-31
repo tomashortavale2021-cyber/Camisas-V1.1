@@ -13,7 +13,7 @@ function getAllShirts(week) {
 
 
 // ============================================================
-// 2. POSIÇÕES QUE SAEM EM CADA OCORRÊNCIA DO CIRCUITO
+// 2. POSIÇÕES QUE SAEM EM CADA OCORRÊNCIA
 // ============================================================
 //
 // Índices:
@@ -23,12 +23,12 @@ function getAllShirts(week) {
 // 3 = Quinta
 // 4 = Sexta
 //
-// Ordem das duplas que vão lavar:
-// 1. Quinta + Sexta
-// 2. Terça + Quarta
-// 3. Segunda + Sexta
-// 4. Quarta + Quinta
-// 5. Segunda + Terça
+// Ordem circular:
+// Qui + Sex
+// Ter + Qua
+// Sex + Seg
+// Qua + Qui
+// Seg + Ter
 //
 // Depois repete.
 //
@@ -36,7 +36,7 @@ function getAllShirts(week) {
 const OUTGOING_POSITIONS = [
   [3, 4], // Qui + Sex
   [1, 2], // Ter + Qua
-  [0, 4], // Seg + Sex
+  [4, 0], // Sex + Seg
   [2, 3], // Qua + Qui
   [0, 1]  // Seg + Ter
 ];
@@ -45,8 +45,23 @@ const OUTGOING_POSITIONS = [
 // ============================================================
 // 3. OCORRÊNCIA DO CIRCUITO
 // ============================================================
+//
+// Cada circuito aparece de 2 em 2 semanas.
+//
+// Letras:
+// Semana 1 = ocorrência 0
+// Semana 3 = ocorrência 1
+// Semana 5 = ocorrência 2
+// ...
+//
+// Números:
+// Semana 2 = ocorrência 0
+// Semana 4 = ocorrência 1
+// Semana 6 = ocorrência 2
+// ...
 
 function getOccurrence(week) {
+
   if (!Number.isInteger(week) || week < 1) {
     throw new Error("Semana inválida.");
   }
@@ -58,17 +73,19 @@ function getOccurrence(week) {
 
 
 // ============================================================
-// 4. CALCULAR O ESTADO COMPLETO DE UM CIRCUITO
+// 4. CALCULAR O ESTADO DE UM CIRCUITO
 // ============================================================
 //
-// Cada circuito tem 7 camisas:
-// - 5 em uso
-// - 2 de reserva
+// Cada circuito tem:
+// - 5 camisas em circulação
+// - 2 camisas de reserva
 //
-// Em cada ocorrência:
+// Quando ocorre uma troca:
 // - saem 2 camisas
 // - entram as 2 reservas
-// - as 2 que saíram tornam-se as novas reservas
+// - as 2 que saíram passam a ser as novas reservas
+//
+// Isto reproduz a lógica do circuito circular.
 //
 
 function circuitState(occurrence, all) {
@@ -81,17 +98,18 @@ function circuitState(occurrence, all) {
     const positions =
       OUTGOING_POSITIONS[i % OUTGOING_POSITIONS.length];
 
-    // Guardar as duas que vão sair
+    // Camisas que vão sair
     const outgoing = [
       current[positions[0]],
       current[positions[1]]
     ];
 
-    // As duas reservas entram nos lugares das que saíram
+    // As reservas entram exatamente
+    // nos lugares das camisas que saíram
     current[positions[0]] = reserves[0];
     current[positions[1]] = reserves[1];
 
-    // As que saíram passam a ser as novas reservas
+    // As que saíram passam a ser reservas
     reserves = outgoing;
   }
 
@@ -118,13 +136,21 @@ function shirtsForWeek(week) {
 // ============================================================
 // 6. CAMISAS QUE VÃO SAIR NO FIM DA SEMANA
 // ============================================================
+//
+// Importante:
+// estas são as camisas que estão atualmente nos dois
+// lugares que serão substituídos.
+//
+// Não são simplesmente as duas reservas.
+//
 
 function getOutgoingShirts(week) {
 
   const all = getAllShirts(week);
   const occurrence = getOccurrence(week);
 
-  const state = circuitState(occurrence, all);
+  const currentState =
+    circuitState(occurrence, all);
 
   const positions =
     OUTGOING_POSITIONS[
@@ -132,8 +158,8 @@ function getOutgoingShirts(week) {
     ];
 
   return [
-    state.current[positions[0]],
-    state.current[positions[1]]
+    currentState.current[positions[0]],
+    currentState.current[positions[1]]
   ];
 }
 
@@ -142,52 +168,96 @@ function getOutgoingShirts(week) {
 // 7. CAMISAS QUE VÃO ENTRAR NA SEMANA SEGUINTE
 // ============================================================
 //
-// A semana seguinte pertence ao outro circuito.
+// Há duas situações:
 //
-// Portanto:
-// - semana 1 → procura as reservas do circuito numérico
-// - semana 2 → procura as reservas do circuito das letras
-// - etc.
+// A) A semana seguinte pertence ao mesmo circuito
 //
-// A exceção é a semana 1, porque é a semana inicial:
-// a semana 2 já começa com 1 2 3 4 5.
-// Não precisas de trazer nada para ela.
+// Nesse caso, entram as duas reservas atuais.
+//
+// B) A semana seguinte pertence ao outro circuito
+//
+// Nesse caso, precisamos de saber quais são as duas reservas
+// desse outro circuito antes da sua próxima troca.
+//
+// Essas são precisamente as duas camisas que tens de trazer
+// de casa.
 //
 
 function getIncomingShirts(week) {
 
-  // A primeira semana é especial:
-  // a semana 2 já começa com 1 2 3 4 5.
+  // Semana 1 é atípica:
+  // a semana 2 começa diretamente com 1 2 3 4 5.
   if (week === 1) {
-    return ["—", "—"];
+    return ["_"];
   }
 
-  // O circuito da próxima semana é o circuito oposto.
   const nextWeek = week + 1;
 
-  // A ocorrência do circuito que está atualmente em casa
-  // é a ocorrência imediatamente anterior à próxima semana.
-  const currentOccurrenceOfNextCircuit =
-    getOccurrence(nextWeek) - 1;
+  const currentCircuit = getAllShirts(week);
+  const nextCircuit = getAllShirts(nextWeek);
 
-  // Se for a primeira ocorrência desse circuito,
-  // as duas reservas iniciais são as duas últimas camisas.
-  if (currentOccurrenceOfNextCircuit < 0) {
-    const all = getAllShirts(nextWeek);
-    return all.slice(5, 7);
+  const currentOccurrence =
+    getOccurrence(week);
+
+  const nextOccurrence =
+    getOccurrence(nextWeek);
+
+
+  // ----------------------------------------------------------
+  // CASO 1:
+  // A próxima semana pertence ao MESMO circuito
+  // ----------------------------------------------------------
+
+  if (currentCircuit[0] === nextCircuit[0]) {
+
+    const currentState =
+      circuitState(
+        currentOccurrence,
+        currentCircuit
+      );
+
+    return currentState.reserves;
   }
 
-  const all = getAllShirts(nextWeek);
 
-  const nextCircuitState =
+  // ----------------------------------------------------------
+  // CASO 2:
+  // A próxima semana pertence ao OUTRO circuito
+  // ----------------------------------------------------------
+  //
+  // Precisamos das reservas desse circuito no início
+  // da ocorrência seguinte.
+  //
+  // Exemplo:
+  //
+  // Semana 6 = números
+  // Semana 7 = letras
+  //
+  // Para saber o que entra na semana 7, calculamos
+  // o estado das letras na ocorrência anterior.
+  //
+  // As reservas desse estado são as camisas que tens
+  // de trazer de casa.
+  //
+
+  if (nextOccurrence === 0) {
+
+    const nextState =
+      circuitState(
+        0,
+        nextCircuit
+      );
+
+    return nextState.reserves;
+  }
+
+  const previousState =
     circuitState(
-      currentOccurrenceOfNextCircuit,
-      all
+      nextOccurrence - 1,
+      nextCircuit
     );
 
-  // Estas são as 2 camisas que estão em casa
-  // e que vão entrar na próxima semana.
-  return nextCircuitState.reserves;
+  return previousState.reserves;
 }
 
 
@@ -292,6 +362,10 @@ const incomingEl =
 
 function render() {
 
+  // ----------------------------------------------------------
+  // APLICAÇÃO AINDA NÃO CONFIGURADA
+  // ----------------------------------------------------------
+
   if (!state) {
 
     $("weekTitle").textContent =
@@ -310,6 +384,7 @@ function render() {
       "—";
 
     if ($("circuitBadge")) {
+
       $("circuitBadge").textContent =
         "—";
     }
@@ -334,6 +409,10 @@ function render() {
     formatDateRange(state.date);
 
 
+  // ----------------------------------------------------------
+  // CIRCUITO
+  // ----------------------------------------------------------
+
   if ($("circuitBadge")) {
 
     $("circuitBadge").textContent =
@@ -342,6 +421,10 @@ function render() {
         : "Circuito 1–7";
   }
 
+
+  // ----------------------------------------------------------
+  // MOSTRAR AS 5 CAMISAS
+  // ----------------------------------------------------------
 
   $("shirts").innerHTML =
     shirts.map((shirt, i) => `
@@ -370,16 +453,8 @@ function render() {
   const incoming =
     getIncomingShirts(state.week);
 
-  if (state.week === 1) {
-
-    incomingEl.textContent =
-      "—";
-
-  } else {
-
-    incomingEl.textContent =
-      incoming.join(" + ");
-  }
+  incomingEl.textContent =
+    incoming.join(" + ");
 }
 
 
@@ -455,7 +530,9 @@ $("setupForm")
       }
 
       state = {
+
         week,
+
         date:
           $("setupDate").value || ""
       };
