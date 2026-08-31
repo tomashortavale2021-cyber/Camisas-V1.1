@@ -35,7 +35,7 @@ function getAllShirts(week) {
 const OUTGOING_POSITIONS = [
   [3, 4], // Qui + Sex
   [1, 2], // Ter + Qua
-  [0, 4], // Seg + Sex
+  [4, 0], // Sex + Seg
   [2, 3], // Qua + Qui
   [0, 1]  // Seg + Ter
 ];
