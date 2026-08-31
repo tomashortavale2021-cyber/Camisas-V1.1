@@ -443,7 +443,7 @@ function render() {
     getOutgoingShirts(state.week);
 
   outgoingEl.textContent =
-    outgoing.join(" + ");
+  [...outgoing].sort().join(" + ");
 
 
   // ----------------------------------------------------------
@@ -454,7 +454,7 @@ function render() {
     getIncomingShirts(state.week);
 
   incomingEl.textContent =
-    incoming.join(" + ");
+  [...incoming].sort().join(" + ");
 }
 
 
