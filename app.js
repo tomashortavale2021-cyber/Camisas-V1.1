@@ -156,39 +156,38 @@ function getOutgoingShirts(week) {
 
 function getIncomingShirts(week) {
 
-  // A semana 1 é atípica:
-  // a semana 2 já começa com as 5 camisas numéricas,
-  // por isso não é necessário trazer nenhuma camisa.
+  // A primeira semana é especial:
+  // a semana 2 já começa com 1 2 3 4 5.
   if (week === 1) {
     return ["—", "—"];
   }
 
-  // A próxima semana pertence ao outro circuito.
+  // O circuito da próxima semana é o circuito oposto.
   const nextWeek = week + 1;
 
-  // Para saber quais camisas vão entrar na próxima semana,
-  // temos de olhar para o estado ANTERIOR desse circuito.
-  //
-  // Exemplo:
-  // Semana 1 → A B C D E + reservas F G
-  // Semana 3 → A F G D E
-  //
-  // Logo, no fim da semana 2, as camisas que tens de trazer
-  // são F + G.
-  const previousSameCircuitWeek = nextWeek - 2;
+  // A ocorrência do circuito que está atualmente em casa
+  // é a ocorrência imediatamente anterior à próxima semana.
+  const currentOccurrenceOfNextCircuit =
+    getOccurrence(nextWeek) - 1;
 
-  const all =
-    getAllShirts(previousSameCircuitWeek);
+  // Se for a primeira ocorrência desse circuito,
+  // as duas reservas iniciais são as duas últimas camisas.
+  if (currentOccurrenceOfNextCircuit < 0) {
+    const all = getAllShirts(nextWeek);
+    return all.slice(5, 7);
+  }
 
-  const occurrence =
-    getOccurrence(previousSameCircuitWeek);
+  const all = getAllShirts(nextWeek);
 
-  const previousState =
-    circuitState(occurrence, all);
+  const nextCircuitState =
+    circuitState(
+      currentOccurrenceOfNextCircuit,
+      all
+    );
 
-  // As reservas dessa ocorrência são precisamente
-  // as 2 camisas que vão entrar na próxima ocorrência.
-  return [...previousState.reserves].sort();
+  // Estas são as 2 camisas que estão em casa
+  // e que vão entrar na próxima semana.
+  return nextCircuitState.reserves;
 }
 
 
